@@ -29,15 +29,76 @@ class GEEHandler:
     def get_sentinel1_collection(self, 
                                start_date: str, 
                                end_date: str, 
-                               geometry: ee.Geometry) -> ee.ImageCollection:
+                               geometry: ee.Geometry,
+                               polarization: str = 'VH',
+                               orbit: str = 'BOTH') -> ee.ImageCollection:
         """Get Sentinel-1 collection filtered by date and bounds."""
-        return self.sentinel1 \
+        collection = self.sentinel1 \
             .filterDate(start_date, end_date) \
             .filterBounds(geometry)
+            
+        # Filter by polarization if specified
+        if polarization in ['VH', 'VV']:
+            collection = collection.select(polarization)
+            
+        # Filter by orbit direction if specified
+        if orbit != 'BOTH':
+            collection = collection.filter(ee.Filter.eq('orbitProperties_pass', orbit))
+            
+        return collection
 
     def create_composite(self, collection: ee.ImageCollection) -> ee.Image:
         """Create a composite image from a collection."""
         return collection.mean()
+
+    def create_temporal_composite(self, collection: ee.ImageCollection, band: str = 'VH') -> ee.Image:
+        """Create a temporal composite from first, middle, and last images."""
+        # Get collection size
+        size = collection.size().getInfo()
+        if size < 2:
+            raise ValueError(f"Need at least 2 images for temporal comparison, found {size}")
+        
+        # Create list of images
+        image_list = collection.toList(size)
+        
+        # Get first, middle, and last images
+        first_image = ee.Image(image_list.get(0))
+        middle_image = ee.Image(image_list.get(size // 2))
+        last_image = ee.Image(image_list.get(size - 1))
+        
+        # Create RGB composite
+        return ee.Image.cat([
+            first_image.select(band),
+            middle_image.select(band),
+            last_image.select(band)
+        ])
+
+    def get_map_bounds(self, bounds: list) -> ee.Geometry:
+        """Convert map bounds to Earth Engine geometry."""
+        coords = [[
+            [bounds[0][1], bounds[0][0]],  # SW
+            [bounds[0][1], bounds[1][0]],  # SE
+            [bounds[1][1], bounds[1][0]],  # NE
+            [bounds[1][1], bounds[0][0]],  # NW
+            [bounds[0][1], bounds[0][0]]   # SW (close polygon)
+        ]]
+        return ee.Geometry.Polygon(coords)
+
+    def get_vis_params(self, mode: str = 'temporal') -> Dict[str, Any]:
+        """Get visualization parameters for different modes."""
+        if mode == 'temporal':
+            return {
+                'bands': ['VH', 'VH_1', 'VH_2'],
+                'min': -25,
+                'max': 0,
+                'gamma': 1.4
+            }
+        else:
+            return {
+                'min': -25,
+                'max': 0,
+                'palette': ['black', 'white']
+            }
 
     def export_to_drive(self, 
                        image: ee.Image, 

@@ -4,74 +4,82 @@
     <title>SeekerLight Map</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet Draw CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-    
+    <link rel="stylesheet" href="static/leaflet.css" />
+    <script src="static/leaflet.js"></script>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
     <style>
-        body { margin:0; padding:0; }
-        #map { position: absolute; top:0; bottom:0; right:0; left:0; }
-        .leaflet-control-layers { max-height: 80vh; overflow-y: auto; }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
     </style>
+    <script>
+        // Initialize map variables
+        var map = null;
+        var currentLayers = {};
+        var drawnItems = null;
+        var channel = null;
+
+        function initMap() {
+            try {
+                console.log('Initializing map...');
+                // Initialize the map
+                map = L.map('map').setView([47.2357, 39.7015], 8);
+                
+                // Add OpenStreetMap as base layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: ' OpenStreetMap contributors'
+                }).addTo(map);
+                
+                // Initialize the FeatureGroup for drawn items
+                drawnItems = new L.FeatureGroup();
+                map.addLayer(drawnItems);
+                
+                // Add scale control
+                L.control.scale().addTo(map);
+                
+                console.log('Map initialized successfully');
+            } catch (error) {
+                console.error('Error initializing map:', error);
+            }
+        }
+
+        // Wait for document to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Document loaded, initializing map...');
+            // Initialize map first
+            initMap();
+            
+            // Then try to set up Qt communication
+            if (typeof QWebChannel !== 'undefined') {
+                console.log('QWebChannel found, waiting for transport...');
+                // Wait a bit for the transport to be ready
+                setTimeout(function() {
+                    try {
+                        if (typeof qt !== 'undefined' && qt.webChannelTransport) {
+                            new QWebChannel(qt.webChannelTransport, function (ch) {
+                                channel = ch;
+                                console.log('Qt WebChannel initialized');
+                            });
+                        } else {
+                            console.log('Qt transport not available');
+                        }
+                    } catch (e) {
+                        console.error('Error initializing WebChannel:', e);
+                    }
+                }, 100);
+            } else {
+                console.log('QWebChannel not available');
+            }
+        });
+    </script>
 </head>
 <body>
     <div id="map"></div>
-    
-    <!-- Leaflet JavaScript -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Leaflet Draw JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <!-- QWebChannel JavaScript -->
-    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
-    
-    <script>
-        // Initialize the map
-        var map = L.map('map').setView([47.2357, 39.7015], 8);
-        
-        // Base layers
-        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        });
-        
-        var satellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            maxZoom: 19,
-            attribution: 'Google Satellite'
-        });
-        
-        // Add base layers to map
-        osm.addTo(map);
-        satellite.addTo(map);
-        
-        // Layer control
-        var baseMaps = {
-            "OpenStreetMap": osm,
-            "Satellite": satellite
-        };
-        
-        var overlayMaps = {};
-        
-        map.layerControl = L.control.layers(baseMaps, overlayMaps, {
-            position: 'topright',
-            collapsed: false
-        }).addTo(map);
-        
-        // Initialize empty layer groups for drawn items and AOIs
-        window.drawnItems = new L.FeatureGroup();
-        map.addLayer(window.drawnItems);
-        
-        // Add scale control
-        L.control.scale().addTo(map);
-        
-        // Initialize empty object to store layer references
-        window.mapLayers = {};
-        
-        // Add QWebChannel for Qt integration
-        new QWebChannel(qt.webChannelTransport, function(channel) {
-            window.qt = channel.objects.qt;
-        });
-    </script>
 </body>
 </html>

@@ -23,19 +23,33 @@ def main():
             
         print(f"Found notebook at: {notebook_path}")
         
-        # Get the voila executable
-        voila_cmd = os.path.join(script_dir, 'venv', 'bin', 'voila')
-        if not os.path.exists(voila_cmd):
-            raise FileNotFoundError(f"Voilà not found at: {voila_cmd}")
+        # Get the python and voila commands
+        if sys.platform == 'win32':
+            cmd = [
+                sys.executable,
+                '-m',
+                'voila',
+                notebook_path,
+                '--no-browser',
+                '--port=8866',
+                '--show_tracebacks=True',
+                '--debug'
+            ]
+        else:
+            # On Mac/Linux, check for voila in virtual environment first
+            voila_cmd = os.path.join(script_dir, 'venv', 'bin', 'voila')
+            if not os.path.exists(voila_cmd):
+                voila_cmd = 'voila'  # Fallback to global installation
+            cmd = [
+                voila_cmd,
+                notebook_path,
+                '--no-browser',
+                '--port=8866',
+                '--show_tracebacks=True',
+                '--debug'
+            ]
         
         # Start Voilà server
-        cmd = [
-            voila_cmd,
-            notebook_path,
-            '--no-browser',
-            '--port=8866'
-        ]
-        
         print(f"Starting Voilà server...")
         process = subprocess.Popen(cmd)
         
