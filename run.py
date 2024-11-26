@@ -12,12 +12,13 @@ def main():
     try:
         print("Starting SeekerLight...")
         
-        # Get the directory where this script is located
+        # Get the directory containing this script
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        print(f"Working directory: {script_dir}")
         
-        # Path to the notebook
+        # Get the notebook path
         notebook_path = os.path.join(script_dir, 'app.ipynb')
+        
+        # Check if notebook exists
         if not os.path.exists(notebook_path):
             raise FileNotFoundError(f"Notebook not found at: {notebook_path}")
             
@@ -53,22 +54,21 @@ def main():
         print(f"Starting Voilà server...")
         process = subprocess.Popen(cmd)
         
-        # Give the server time to start
-        print("Waiting for server to start...")
-        sleep(3)
+        # Wait a bit for the server to start
+        sleep(2)
         
-        # Open browser
-        url = "http://localhost:8866"
-        print(f"Opening {url}")
-        webbrowser.open(url)
+        # Open the browser
+        webbrowser.open('http://localhost:8866')
         
-        print("\nPress Ctrl+C to stop the server")
+        print("Server started! Opening browser...")
+        print("Press Ctrl+C to stop the server.")
+        
+        # Keep the script running
         process.wait()
         
     except KeyboardInterrupt:
-        print("\nShutting down...")
+        print("\nShutting down server...")
         sys.exit(0)
-        
     except Exception as e:
         print(f"Error: {str(e)}")
         sys.exit(1)
